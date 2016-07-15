@@ -28,6 +28,6 @@
       didn't open a console at least once since game
       was launched
   
-  ScriptDragon can be obtained at [http://www.dev-c.com/skyrim/scriptdragon/](Link URL)
+  ScriptDragon can be obtained at [http://www.dev-c.com/skyrim/scriptdragon/](http://www.dev-c.com/skyrim/scriptdragon/)
 
-  Thanks to Alexander Blade ([http://www.dev-c.com](Link URL)) for making it!
+  Thanks to Alexander Blade ([http://www.dev-c.com](http://www.dev-c.com)) for making it!
