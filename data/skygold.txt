@@ -1,0 +1,1 @@
+player.Additem F 5000

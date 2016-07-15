@@ -1,0 +1,4 @@
+player.damageactorvalue health 80
+player.damageactorvalue magicka 80
+player.damageactorvalue stamina 80
+player.equipitem 0301cd72
