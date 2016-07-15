@@ -1,8 +1,4 @@
-###SkySilver asi plugin for ScriptDragon (Skyrim)###
-
-  **Version**: 0.1
-
-  **Author**: AdM244
+###SkySilver asi plugin for ScriptDragon (Skyrim) v0.1###
   
   **Description**:
 
