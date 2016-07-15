@@ -1,4 +1,4 @@
-### --- SkySilver asi plugin for ScriptDragon (Skyrim) --- ###
+###SkySilver asi plugin for ScriptDragon (Skyrim)###
 
   **Version**: 0.1
 
