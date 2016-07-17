@@ -6,6 +6,15 @@
 
 #pragma once
 
+namespace ID_Spell
+{
+  enum
+  {
+    DragonVoiceStormCall = 0x00016D40,
+    dunCGDragonVoiceStormCall = 0x000B2388
+  };
+}
+
 namespace ID_BGSCameraPath
 {
     enum
