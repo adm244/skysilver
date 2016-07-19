@@ -4,9 +4,39 @@
     give light sources to player (it's really dark)
 */
 
+//void Game::RequestSave()
+//void Game::RequestAutosave()
+
+//void Actor::SetPlayerControls(CActor * self, bool abControls)
+//void Game::ShakeCamera(TESObjectREFR * akSource, float afStrength, float afDuration)
+//bool ObjectReference::Enable(TESObjectREFR * self, bool abFadeIn)
+//void ObjectReference::Say(TESObjectREFR * self, TESTopic * akTopicToSay, CActor * akActorToSpeakAs, bool abSpeakInPlayersHead)
+//uint Sound::Play(TESSound * self, TESObjectREFR * akSource)
+//TESWeather * Weather::GetCurrentWeather()
+//void Weather::ReleaseOverride()
+//bool Actor::AddShout(CActor * self, TESShout * akShout)
+
+//NOTE(adm244): these have no affect at all...
+// void Cell::SetFogColor(TESObjectCELL * self, uint aiNearRed, uint aiNearGreen, uint aiNearBlue, uint aiFarRed, uint aiFarGreen, uint aiFarBlue)
+// void Cell::SetFogPlanes(TESObjectCELL * self, float afNear, float afFar)
+// void Cell::SetFogPower(TESObjectCELL * self, float afPower)
+
+//void Actor::StartCombat(CActor * self, CActor * akTarget)
+
+//ISBoatedMansGrottoFog = 0x00105939 - orange
+//ISSkyrimClearDUSK_CO = 0x0010A1D1 - orange
+//ISSkyrimFogDAWN_CO = 0x0010A1D3 - gray
+//ISSkyrimFogDUSK_FF = 0x0010A1F9 - orange, dof
+//ISSkyrimOvercastWarDAWN = 0x000D299B, orange
+//ISSolitudeBluePalaceFogNMARE = 0x0010593C, orange, close dof
+
+//NOTE(adm244): fog and imagespace will be set to default when entering a map
+// or changing cell (going to interior)
+// perhabs track going into interior?
+
 //NOTE(adm244):
-// Seting weather first and than call SetImageSpace with no param
-// will result in setting currect imagespace for current weather
+// Setting weather first and than call SetImageSpace with no param
+// will result in setting correct imagespace for current weather
 
 //NOTE(adm244):
 // The weather will automatically change when crossing cell
@@ -131,57 +161,83 @@ void main()
       Wait(500);
     }
     
-    if( GetKeyPressed(key_skygeddon) ){
-      //TESObjectCELL * ObjectReference::GetParentCell(TESObjectREFR * self)
-      //bool Cell::IsInterior(TESObjectCELL * self)
-      
-      //TODO(adm244): pointer checks
-      
-      CActor *player = Game::GetPlayer();
-      TESObjectCELL *curCell = ObjectReference::GetParentCell((TESObjectREFR *)player);
-      
-      if( Cell::IsInterior(curCell) ){
-        PrintNote("We're in interior right now, no skygeddon");
-      } else{
+    if( keys_active ){
+      if( GetKeyPressed(key_skygeddon) ){
+        //TODO(adm244): pointer checks
         
-        TESWeather *weather = (TESWeather *)Game::GetFormById(ID_TESWeather::SkyrimMQ206weather);
-        SpellItem *spell = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
+        CActor *player = Game::GetPlayer();
+        TESObjectCELL *curCell = ObjectReference::GetParentCell((TESObjectREFR *)player);
         
-        if( weather && spell ){
-          //TODO(adm244): savegame
-          //void Cell::RequestSave()
-          //void Cell::RequestAutosave()
+        if( Cell::IsInterior(curCell) ){
+          // INTERIOR
+          TESForm *SpiderFrostCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(0x030206E1), "TESForm", "TESForm");
+          TESForm *SpiderFireCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(0x03017077), "TESForm", "TESForm");
           
-          //void Actor::SetPlayerControls(CActor * self, bool abControls)
-          //void Game::ShakeCamera(TESObjectREFR * akSource, float afStrength, float afDuration)
-          //bool ObjectReference::Enable(TESObjectREFR * self, bool abFadeIn)
-          //void ObjectReference::Say(TESObjectREFR * self, TESTopic * akTopicToSay, CActor * akActorToSpeakAs, bool abSpeakInPlayersHead)
-          //uint Sound::Play(TESSound * self, TESObjectREFR * akSource)
-          //TESWeather * Weather::GetCurrentWeather()
-          //void Weather::ReleaseOverride()
-          //bool Actor::AddShout(CActor * self, TESShout * akShout)
+          SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
           
-          //void Cell::SetFogColor(TESObjectCELL * self, uint aiNearRed, uint aiNearGreen, uint aiNearBlue, uint aiFarRed, uint aiFarGreen, uint aiFarBlue)
-          //void Cell::SetFogPlanes(TESObjectCELL * self, float afNear, float afFar)
-          //void Cell::SetFogPower(TESObjectCELL * self, float afPower)
+          if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
+            float x = ObjectReference::GetPositionX((TESObjectREFR *)player);
+            float y = ObjectReference::GetPositionY((TESObjectREFR *)player);
+            float z = ObjectReference::GetPositionZ((TESObjectREFR *)player);
+            
+            CActor *RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
+            
+            ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
+            
+            //NOTE(adm244): if RandomActor was found then it's an object reference already
+            // otherwise it will be player, safe to cast
+            ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFrostCloakingForm, 5, 0, 0);
+            ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFireCloakingForm, 5, 0, 0);
+            
+            if( SpellBecomeEthereal3 ){
+              Spell::Cast(SpellBecomeEthereal3, (TESObjectREFR *)player, NULL);
+            }
+            
+            Game::RequestAutosave();
+            
+            PrintNote("!skygeddon(dungeon) was successeful");
+          }
+        } else{
+          // EXTERIOR
+          TESWeather *weather = (TESWeather *)Game::GetFormById(ID_TESWeather::SkyrimMQ206weather);
+          SpellItem *spell30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
+          SpellItem *spell90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
           
-          Weather::ForceActive(weather, 1);
-          ExecuteConsoleCommand("setfog 100 5500", NULL);
+          if( weather && spell30sec && spell90sec ){
+            TESForm *dragonForm = Game::GetFormById(0x000F8A4D);
+            
+            Actor::ResetHealthAndLimbs(player);
+            
+            TESObjectREFR *dragon01Ref = ObjectReference::PlaceAtMe((TESObjectREFR *)player, dragonForm, 1, 0, 0);
+            
+            Wait(10);
+            
+            ObjectReference::MoveTo(dragon01Ref, (TESObjectREFR *)player, 0, 0, 1500, FALSE);
+            
+            //NOTE(adm244): TESObjectREFR can be safely casted to CActor
+            Actor::StartCombat((CActor *)dragon01Ref, player);
+            
+            Spell::Cast(spell30sec, dragon01Ref, (TESObjectREFR *)player);
+            Spell::Cast(spell90sec, dragon01Ref, NULL);
+            
+            Weather::ForceActive(weather, 1);
+            
+            ExecuteConsoleCommand("setimagespace 10593C", NULL);
+            ExecuteConsoleCommand("setfog 100 3000", NULL);
+            ExecuteConsoleCommand("setclipdist 20000", NULL);
+            
+            Wait(10);
+            
+            Game::RequestAutosave();
+            
+            PrintNote("!skygeddon was successeful");
+          }
           
-          TESObjectREFR *dragonRef = ObjectReference::PlaceAtMe((TESObjectREFR *)player, Game::GetFormById(0x000FEA9C), 1, 0, 0);
-          ObjectReference::MoveTo(dragonRef, (TESObjectREFR *)player, 0, 0, 3000, TRUE);
-          //ObjectReference::Enable(dragonRef, TRUE);
-          Spell::Cast(spell, dragonRef, NULL);
-          
-          PrintNote("!skygeddon was successeful");
         }
         
+        Wait(500);
       }
       
-      Wait(500);
-    }
-    
-    if( keys_active ){
       for( int i = 0; i < batchnum; ++i ){
         if( GetKeyPressed(batches[i].key) ){
           char str[MAX_STRING] = "bat ";
