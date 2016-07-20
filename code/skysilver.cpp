@@ -75,7 +75,7 @@
 #include "common\plugin.h"
 
 //SHGetFolderPathA - for windows 2000 support
-#include "Shlobj.h"
+#include <shlobj.h>
 
 #define SCRIPTNAME "SkySilver"
 #define PLUGINNAME "SkySilver.esp"
@@ -86,14 +86,26 @@
 #define MAX_BATCHES 20
 #define MAX_STRING 255
 
-//NOTE(adm244) highest byte will differ depending on load order,
-// defaults to 02 (first in load order)
-static uint ID_PLUGIN_WEATHER_ECLIPSE = 0x02000D62;
-
 struct BatchData{
   char filename[MAX_FILENAME];
   int key;
 };
+
+//TODO(adm244): move to a plugin_info structure perhabs?
+static BOOL initialized = FALSE;
+
+static BatchData batches[MAX_BATCHES];
+static int batchnum;
+
+static BOOL keys_active;
+static BYTE key_disable;
+static BYTE key_skygeddon;
+static BYTE key_skyeclipse;
+
+//NOTE(adm244) highest byte will differ depending on load order,
+// defaults to 02 (first in load order)
+static uint ID_PLUGIN_WEATHER_ECLIPSE = 0x02000D62;
+static uint ID_PLUGIN_WEATHER_SKYGEDDON = 0x02001828;
 
 BOOL CheckLoadOrder()
 {
@@ -103,15 +115,12 @@ BOOL CheckLoadOrder()
   
   if( SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path) == S_OK ){
     strcat(path, "\\Skyrim\\plugins.txt");
-    //PrintNote("%s", path);
     plugins = fopen(path, "r");
     
     if( plugins ){
       char filename[MAX_STRING] = PLUGINNAME;
       char line[MAX_STRING];
       uint index = 0;
-      
-      PrintNote("File is openned");
       
       strcat(filename, "\n");
       
@@ -120,7 +129,9 @@ BOOL CheckLoadOrder()
         if( line[0] != '#' ){
           if( !strcmp(line, filename) ){
             if( index > 0 ){
-              ID_PLUGIN_WEATHER_ECLIPSE += (index << 24);
+              index <<= 24;
+              ID_PLUGIN_WEATHER_ECLIPSE += index;
+              ID_PLUGIN_WEATHER_SKYGEDDON += index;
             }
             
             result = TRUE;
@@ -151,15 +162,10 @@ BOOL InitBatchFiles(BatchData *batches, int *num)
     
     if( p && (batchnum < MAX_BATCHES) ){
       char *endptr;
-      //std::string key;
-      
       *p++ = '\0';
       
       strcpy(batches[batchnum].filename, str);
       batches[batchnum].key = (int)strtol(p, &endptr, 0);
-      
-      //key = GetKeyName(batches[batchnum].key);
-      //PrintNote("[INFO] %s file, %s key loaded", batches[batchnum].filename, key.c_str());
       
       str = strchr(p, '\0');
       str++;
@@ -178,28 +184,29 @@ BOOL InitBatchFiles(BatchData *batches, int *num)
 
 void main()
 {
-  BatchData batches[MAX_BATCHES];
-  int batchnum;
-  
-  BOOL bres = InitBatchFiles(batches, &batchnum);
-  
-  BOOL keys_active = TRUE;
-  BYTE key_disable = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
-  BYTE key_skygeddon = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0x21);
-  BYTE key_skyeclipse = IniReadInt(CONFIGFILE, "keys", "iKeySkynight", 0x2D);
-  
-  if( !CheckLoadOrder() ){
-    PrintNote("[FATAL] Could not find \"%s\" plugin in active load order", PLUGINNAME);
-    return;
-  }
-  
-  PrintNote("[INFO] %s script launched", SCRIPTNAME);
-  
-  if( bres ){
-    PrintNote("[INFO] %d batch files initialized", batchnum);
-  } else{
-    PrintNote("[ERROR] Batch files failed to initialize!");
-    return;
+  if( !initialized ){
+    BOOL bres = InitBatchFiles(batches, &batchnum);
+    
+    keys_active = TRUE;
+    key_disable = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
+    key_skygeddon = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0x21);
+    key_skyeclipse = IniReadInt(CONFIGFILE, "keys", "iKeySkynight", 0x2D);
+    
+    if( !CheckLoadOrder() ){
+      PrintNote("[FATAL] Could not find \"%s\" plugin in active load order", PLUGINNAME);
+      return;
+    }
+    
+    PrintNote("[INFO] %s script launched", SCRIPTNAME);
+    
+    if( bres ){
+      PrintNote("[INFO] %d batch files initialized", batchnum);
+    } else{
+      PrintNote("[ERROR] Batch files failed to initialize!");
+      return;
+    }
+    
+    initialized = TRUE;
   }
   
   while( TRUE )
@@ -217,10 +224,21 @@ void main()
     
     if( keys_active ){
       if( GetKeyPressed(key_skyeclipse) ){
-        TESWeather *WeatherEclipse = (TESWeather *)dyn_cast(Game::GetFormById(ID_PLUGIN_WEATHER_ECLIPSE), "TESForm", "TESWeather");
+        CActor *PlayerActor = (CActor *)Game::GetPlayer();
+        TESForm *TorchForm = Game::GetFormById(ID_TESObjectLIGH::Torch01);
         
-        if( WeatherEclipse ){
+        TESForm *WeatherEclipseForm = Game::GetFormById(ID_PLUGIN_WEATHER_ECLIPSE);
+        TESWeather *WeatherEclipse = (TESWeather *)dyn_cast(WeatherEclipseForm, "TESForm", "TESWeather");
+        
+        if( PlayerActor && TorchForm && WeatherEclipse ){
           Weather::SetActive(WeatherEclipse, TRUE, FALSE);
+          
+          ObjectReference::AddItem((TESObjectREFR *)PlayerActor, TorchForm, 5, TRUE);
+          Actor::EquipItem(PlayerActor, TorchForm, FALSE, TRUE);
+          
+          Wait(10);
+          
+          Game::RequestAutosave();
           
           PrintNote("!skyeclipse was successeful");
         } else{
@@ -244,11 +262,13 @@ void main()
           SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
           
           if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
+            CActor *RandomActor;
+            
             float x = ObjectReference::GetPositionX((TESObjectREFR *)player);
             float y = ObjectReference::GetPositionY((TESObjectREFR *)player);
             float z = ObjectReference::GetPositionZ((TESObjectREFR *)player);
             
-            CActor *RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
+            RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
             
             ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
             
@@ -267,32 +287,24 @@ void main()
           }
         } else{
           // EXTERIOR
-          TESWeather *weather = (TESWeather *)Game::GetFormById(ID_TESWeather::SkyrimMQ206weather);
+          TESWeather *weather = (TESWeather *)Game::GetFormById(ID_PLUGIN_WEATHER_SKYGEDDON);
           SpellItem *spell30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
           SpellItem *spell90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
           
           if( weather && spell30sec && spell90sec ){
             TESForm *dragonForm = Game::GetFormById(0x000F8A4D);
-            
-            Actor::ResetHealthAndLimbs(player);
-            
             TESObjectREFR *dragon01Ref = ObjectReference::PlaceAtMe((TESObjectREFR *)player, dragonForm, 1, 0, 0);
             
-            Wait(10);
-            
+            Actor::ResetHealthAndLimbs(player);
             ObjectReference::MoveTo(dragon01Ref, (TESObjectREFR *)player, 0, 0, 1500, FALSE);
             
-            //NOTE(adm244): TESObjectREFR can be safely casted to CActor
+            //NOTE(adm244): dragon01Ref can be safely casted to CActor since it exists
             Actor::StartCombat((CActor *)dragon01Ref, player);
             
             Spell::Cast(spell30sec, dragon01Ref, (TESObjectREFR *)player);
             Spell::Cast(spell90sec, dragon01Ref, NULL);
             
             Weather::ForceActive(weather, 1);
-            
-            ExecuteConsoleCommand("setimagespace 10593C", NULL);
-            ExecuteConsoleCommand("setfog 100 3000", NULL);
-            ExecuteConsoleCommand("setclipdist 20000", NULL);
             
             Wait(10);
             
