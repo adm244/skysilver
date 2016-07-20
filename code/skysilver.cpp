@@ -74,9 +74,11 @@
 #include "common\enums.h"
 #include "common\plugin.h"
 
-#include <stdio.h>
+//SHGetFolderPathA - for windows 2000 support
+#include "Shlobj.h"
 
 #define SCRIPTNAME "SkySilver"
+#define PLUGINNAME "SkySilver.esp"
 #define CONFIGFILE "skysilver.ini"
 
 #define MAX_SECTION 32767
@@ -84,13 +86,59 @@
 #define MAX_BATCHES 20
 #define MAX_STRING 255
 
+//NOTE(adm244) highest byte will differ depending on load order,
+// defaults to 02 (first in load order)
+static uint ID_PLUGIN_WEATHER_ECLIPSE = 0x02000D62;
+
 struct BatchData{
   char filename[MAX_FILENAME];
   int key;
 };
 
+BOOL CheckLoadOrder()
+{
+  BOOL result = FALSE;
+  char path[MAX_STRING];
+  FILE *plugins;
+  
+  if( SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path) == S_OK ){
+    strcat(path, "\\Skyrim\\plugins.txt");
+    //PrintNote("%s", path);
+    plugins = fopen(path, "r");
+    
+    if( plugins ){
+      char filename[MAX_STRING] = PLUGINNAME;
+      char line[MAX_STRING];
+      uint index = 0;
+      
+      PrintNote("File is openned");
+      
+      strcat(filename, "\n");
+      
+      while( !feof(plugins) ){
+        fgets(line, MAX_STRING, plugins);
+        if( line[0] != '#' ){
+          if( !strcmp(line, filename) ){
+            if( index > 0 ){
+              ID_PLUGIN_WEATHER_ECLIPSE += (index << 24);
+            }
+            
+            result = TRUE;
+            break;
+          }
+          index++;
+        }
+      }
+      
+      fclose(plugins);
+    }
+  }
+  
+  return(result);
+}
+
 //NOTE(adm244): loads a list of batch files and keys that activate them
-bool InitBatchFiles(BatchData *batches, int *num)
+BOOL InitBatchFiles(BatchData *batches, int *num)
 {
   char buf[MAX_SECTION];
   char *str = buf;
@@ -125,7 +173,7 @@ bool InitBatchFiles(BatchData *batches, int *num)
   }
   
   *num = batchnum;
-  return( batchnum > 0 );
+  return(batchnum > 0);
 }
 
 void main()
@@ -138,6 +186,12 @@ void main()
   BOOL keys_active = TRUE;
   BYTE key_disable = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
   BYTE key_skygeddon = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0x21);
+  BYTE key_skyeclipse = IniReadInt(CONFIGFILE, "keys", "iKeySkynight", 0x2D);
+  
+  if( !CheckLoadOrder() ){
+    PrintNote("[FATAL] Could not find \"%s\" plugin in active load order", PLUGINNAME);
+    return;
+  }
   
   PrintNote("[INFO] %s script launched", SCRIPTNAME);
   
@@ -162,6 +216,20 @@ void main()
     }
     
     if( keys_active ){
+      if( GetKeyPressed(key_skyeclipse) ){
+        TESWeather *WeatherEclipse = (TESWeather *)dyn_cast(Game::GetFormById(ID_PLUGIN_WEATHER_ECLIPSE), "TESForm", "TESWeather");
+        
+        if( WeatherEclipse ){
+          Weather::SetActive(WeatherEclipse, TRUE, FALSE);
+          
+          PrintNote("!skyeclipse was successeful");
+        } else{
+          PrintNote("[ERROR] Weather %08X not found, check your load order", ID_PLUGIN_WEATHER_ECLIPSE);
+        }
+        
+        Wait(500);
+      }
+      
       if( GetKeyPressed(key_skygeddon) ){
         //TODO(adm244): pointer checks
         
