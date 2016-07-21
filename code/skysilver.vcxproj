@@ -67,7 +67,8 @@
       <Command>md "..\bin"
 copy "$(OutDir)$(TargetName)$(TargetExt)" "..\bin"
 copy "..\bin\$(TargetName)$(TargetExt)" "F:\games\steamapps\common\Skyrim"
-copy "..\bin\$(TargetName).ini" "F:\games\steamapps\common\Skyrim"</Command>
+copy "..\bin\$(TargetName).ini" "F:\games\steamapps\common\Skyrim"
+copy "F:\games\steamapps\common\Skyrim\Data\SkySilver.esp" "..\bin"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

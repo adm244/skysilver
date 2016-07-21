@@ -89,7 +89,20 @@ DWORD IniReadSection(char *inifile, char *section, char *buffer, DWORD bufsize)
 
 bool GetKeyPressed(BYTE key)
 {
-  return (GetKeyState(key) & 0x80000000) > 0;
+  //IMPORTANT(adm244): GetKeyState returns 16-bit integer as MSDN says,
+  // so why the heck this mask is cheking highest bit in 32-bit integer?!
+  // https://msdn.microsoft.com/en-us/library/windows/desktop/ms646301(v=vs.85).aspx
+  // I've checked the value GetKeyState returns and it's ACTUALLY a 32-bit integer (windows 7 sp1),
+  // but the weird thing is that IT'S STILL puts value that indicates whether the key
+  // is pressed or not in highest bit of LOWER 16-bit part (for backwards-compability??)
+  // and fills HIGHER 16-bit with ones WHEN corresponding key is pressed and with zeros when it's not
+  //return (GetKeyState(key) & 0x80000000) > 0;
+  
+  SHORT keystate = (SHORT)GetAsyncKeyState(key);
+  
+  //NOTE(adm244): GetAsyncKeyState does not wait for message queue to be proccessed,
+  // so it should retrive the state as soon as this function is called
+  return( (keystate & 0x8000) > 0 );
 }
 
 void PrintDebug(char *pattern, ...)
