@@ -23,7 +23,7 @@
   
   **KNOWN_BUGS**:
 
-    - Key presses are to sencetive (effect of holding down a key),
+    - Key presses are to sensitive (effect of holding down a key),
       will fix itself once cooldown system is implemented
     - Executing command won't do anything if player
       didn't open a console at least once since game
