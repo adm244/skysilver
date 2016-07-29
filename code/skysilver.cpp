@@ -51,7 +51,8 @@
 
 struct BatchData{
   char filename[MAX_FILENAME];
-  int key;
+  BYTE key;
+  BOOL enabled;
 };
 
 //TODO(adm244): move to a plugin_info structure perhabs?
@@ -62,9 +63,14 @@ static BatchData batches[MAX_BATCHES];
 static int batchnum;
 
 static BOOL keys_active;
-static BYTE key_disable;
+static BYTE key_toggle;
+static BOOL toggle_enabled = TRUE;
+
 static BYTE key_skygeddon;
 static BYTE key_skyeclipse;
+
+static BOOL skygeddon_enabled = TRUE;
+static BOOL skyeclipse_enabled = TRUE;
 
 //NOTE(adm244) highest byte will differ depending on load order,
 // defaults to 02 (first in load order),
@@ -156,6 +162,7 @@ BOOL InitBatchFiles(BatchData *batches, int *num)
       
       strcpy(batches[index].filename, str);
       batches[index].key = (int)strtol(p, &endptr, 0);
+      batches[index].enabled = TRUE;
       
       str = strchr(p, '\0');
       str++;
@@ -178,7 +185,7 @@ void main()
     BOOL bres = InitBatchFiles(batches, &batchnum);
     
     keys_active = TRUE;
-    key_disable = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
+    key_toggle = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
     key_skygeddon = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0x21);
     key_skyeclipse = IniReadInt(CONFIGFILE, "keys", "iKeySkyeclipse", 0x2D);
     
@@ -197,26 +204,36 @@ void main()
   }
   
   while( TRUE ){
-    if( GetKeyPressed(key_disable) ){
-      if( keys_active ){
-        PrintNote("[INFO] Commands disabled");
-      } else{
-        PrintNote("[INFO] Commands enabled");
+    if( GetKeyPressed(key_toggle) ){
+      if( toggle_enabled ){
+        toggle_enabled = FALSE;
+        if( keys_active ){
+          PrintNote("[INFO] Commands disabled");
+        } else{
+          PrintNote("[INFO] Commands enabled");
+        }
+        keys_active = !keys_active;
       }
-      keys_active = !keys_active;
-      
-      Wait(500);
+    } else{
+      toggle_enabled = TRUE;
     }
     
     if( keys_active ){
       for( int i = 0; i < batchnum; ++i ){
         if( GetKeyPressed(batches[i].key) ){
+          if( !batches[i].enabled ){
+            continue;
+          }
+          batches[i].enabled = FALSE;
+          
           char str[MAX_STRING] = "bat ";
           strcat(str, batches[i].filename);
           
           //FIX(adm244): requires to open (and close) a console first, otherwise will not work
           ExecuteConsoleCommand(str, NULL);
           PrintNote("!%s was successeful", batches[i].filename);
+        } else{
+          batches[i].enabled = TRUE;
         }
         
         Wait(0);
@@ -224,95 +241,103 @@ void main()
       
       if( plugins_loaded ){
         if( GetKeyPressed(key_skyeclipse) ){
-          CActor *PlayerActor = (CActor *)Game::GetPlayer();
-          TESForm *TorchForm = Game::GetFormById(ID_TESObjectLIGH::Torch01);
-          
-          TESForm *WeatherEclipseForm = Game::GetFormById(ID_PLUGIN_WEATHER_ECLIPSE);
-          TESWeather *WeatherEclipse = (TESWeather *)dyn_cast(WeatherEclipseForm, "TESForm", "TESWeather");
-          
-          if( PlayerActor && TorchForm && WeatherEclipse ){
-            Weather::SetActive(WeatherEclipse, TRUE, FALSE);
+          if( skyeclipse_enabled ){
+            skyeclipse_enabled = FALSE;
             
-            ObjectReference::AddItem((TESObjectREFR *)PlayerActor, TorchForm, 5, TRUE);
-            Actor::EquipItem(PlayerActor, TorchForm, FALSE, TRUE);
+            CActor *PlayerActor = (CActor *)Game::GetPlayer();
+            TESForm *TorchForm = Game::GetFormById(ID_TESObjectLIGH::Torch01);
             
-            Game::RequestAutosave();
+            TESForm *WeatherEclipseForm = Game::GetFormById(ID_PLUGIN_WEATHER_ECLIPSE);
+            TESWeather *WeatherEclipse = (TESWeather *)dyn_cast(WeatherEclipseForm, "TESForm", "TESWeather");
             
-            PrintNote("!skyeclipse was successeful");
-          } else{
-            PrintNote("[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
-          }
-          
-          Wait(500);
-        }
-        
-        if( GetKeyPressed(key_skygeddon) ){
-          CActor *player = Game::GetPlayer();
-          TESObjectCELL *curCell = ObjectReference::GetParentCell((TESObjectREFR *)player);
-          
-          if( Cell::IsInterior(curCell) ){
-            // INTERIOR
-            TESForm *SpiderFrostCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FROSTCLOAKING), "TESForm", "TESForm");
-            TESForm *SpiderFireCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FIRECLOAKING), "TESForm", "TESForm");
-            
-            SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
-            
-            if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
-              CActor *RandomActor;
+            if( PlayerActor && TorchForm && WeatherEclipse ){
+              Weather::SetActive(WeatherEclipse, TRUE, FALSE);
               
-              float x = ObjectReference::GetPositionX((TESObjectREFR *)player);
-              float y = ObjectReference::GetPositionY((TESObjectREFR *)player);
-              float z = ObjectReference::GetPositionZ((TESObjectREFR *)player);
-              
-              RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
-              
-              ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
-              
-              //NOTE(adm244): if RandomActor was found then it's an object reference already
-              // otherwise it will be player, safe to cast
-              ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFrostCloakingForm, 5, 0, 0);
-              ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFireCloakingForm, 5, 0, 0);
-              
-              if( SpellBecomeEthereal3 ){
-                Spell::Cast(SpellBecomeEthereal3, (TESObjectREFR *)player, NULL);
-              }
+              ObjectReference::AddItem((TESObjectREFR *)PlayerActor, TorchForm, 5, TRUE);
+              Actor::EquipItem(PlayerActor, TorchForm, FALSE, TRUE);
               
               Game::RequestAutosave();
               
-              PrintNote("!skygeddon(dungeon) was successeful");
-            } else{
-              PrintNote("[ERROR] Couldn't find \"%s\", check your load order", DLC02NAME);
-            }
-          } else{
-            // EXTERIOR
-            TESWeather *weather = (TESWeather *)Game::GetFormById(ID_PLUGIN_WEATHER_SKYGEDDON);
-            SpellItem *spell30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
-            SpellItem *spell90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
-            
-            if( weather && spell30sec && spell90sec ){
-              TESForm *dragonForm = Game::GetFormById(ID_TESLevCharacter::MQ104LCharDragon);
-              TESObjectREFR *dragon01Ref = ObjectReference::PlaceAtMe((TESObjectREFR *)player, dragonForm, 1, 0, 0);
-              
-              Actor::ResetHealthAndLimbs(player);
-              ObjectReference::MoveTo(dragon01Ref, (TESObjectREFR *)player, 0, 0, 1500, FALSE);
-              
-              //NOTE(adm244): dragon01Ref can be safely casted to CActor since it exists
-              Actor::StartCombat((CActor *)dragon01Ref, player);
-              
-              Spell::Cast(spell30sec, dragon01Ref, (TESObjectREFR *)player);
-              Spell::Cast(spell90sec, dragon01Ref, NULL);
-              
-              Weather::ForceActive(weather, 1);
-              Game::RequestAutosave();
-              
-              PrintNote("!skygeddon was successeful");
+              PrintNote("!skyeclipse was successeful");
             } else{
               PrintNote("[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
             }
-            
           }
-          
-          Wait(500);
+        } else{
+          skyeclipse_enabled = TRUE;
+        }
+        
+        if( GetKeyPressed(key_skygeddon) ){
+          if( skygeddon_enabled ){
+            skygeddon_enabled = FALSE;
+            
+            CActor *player = Game::GetPlayer();
+            TESObjectCELL *curCell = ObjectReference::GetParentCell((TESObjectREFR *)player);
+            
+            if( Cell::IsInterior(curCell) ){
+              // INTERIOR
+              TESForm *SpiderFrostCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FROSTCLOAKING), "TESForm", "TESForm");
+              TESForm *SpiderFireCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FIRECLOAKING), "TESForm", "TESForm");
+              
+              SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
+              
+              if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
+                CActor *RandomActor;
+                
+                float x = ObjectReference::GetPositionX((TESObjectREFR *)player);
+                float y = ObjectReference::GetPositionY((TESObjectREFR *)player);
+                float z = ObjectReference::GetPositionZ((TESObjectREFR *)player);
+                
+                RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
+                
+                ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
+                
+                //NOTE(adm244): if RandomActor was found then it's an object reference already
+                // otherwise it will be player, safe to cast
+                ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFrostCloakingForm, 5, 0, 0);
+                ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFireCloakingForm, 5, 0, 0);
+                
+                if( SpellBecomeEthereal3 ){
+                  Spell::Cast(SpellBecomeEthereal3, (TESObjectREFR *)player, NULL);
+                }
+                
+                Game::RequestAutosave();
+                
+                PrintNote("!skygeddon(dungeon) was successeful");
+              } else{
+                PrintNote("[ERROR] Couldn't find \"%s\", check your load order", DLC02NAME);
+              }
+            } else{
+              // EXTERIOR
+              TESWeather *weather = (TESWeather *)Game::GetFormById(ID_PLUGIN_WEATHER_SKYGEDDON);
+              SpellItem *spell30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
+              SpellItem *spell90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
+              
+              if( weather && spell30sec && spell90sec ){
+                TESForm *dragonForm = Game::GetFormById(ID_TESLevCharacter::MQ104LCharDragon);
+                TESObjectREFR *dragon01Ref = ObjectReference::PlaceAtMe((TESObjectREFR *)player, dragonForm, 1, 0, 0);
+                
+                Actor::ResetHealthAndLimbs(player);
+                ObjectReference::MoveTo(dragon01Ref, (TESObjectREFR *)player, 0, 0, 1500, FALSE);
+                
+                //NOTE(adm244): dragon01Ref can be safely casted to CActor since it exists
+                Actor::StartCombat((CActor *)dragon01Ref, player);
+                
+                Spell::Cast(spell30sec, dragon01Ref, (TESObjectREFR *)player);
+                Spell::Cast(spell90sec, dragon01Ref, NULL);
+                
+                Weather::ForceActive(weather, 1);
+                Game::RequestAutosave();
+                
+                PrintNote("!skygeddon was successeful");
+              } else{
+                PrintNote("[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
+              }
+              
+            }
+          }
+        } else{
+          skygeddon_enabled = TRUE;
         }
       }
     }

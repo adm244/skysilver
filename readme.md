@@ -1,6 +1,10 @@
 ##SkySilver asi plugin for ScriptDragon (Skyrim)##
 
-**Current version: 0.2**
+**Current version: 0.3**
+
+### New: ###
+
+- Now key presses registering properly
 
 ### Description: ###
 
@@ -51,7 +55,6 @@ You can also open and modify `skysilver.ini` to bind keys for certain commands (
 
 ### Knows Bugs: ###
 
-- Key presses are to sensitive (effect of holding down a key), will fix itself once cooldown system is implemented
 - Executing command won't do anything if player didn't open a console at least once since game was launched
 
 ### Other Information: ###
