@@ -1,2 +1,2 @@
 EXPORTS
-	main
+main=main_loop

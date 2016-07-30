@@ -1,10 +1,16 @@
 /*
-	THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT	
-				(C) Alexander Blade 2011
-			http://Alexander.SannyBuilder.com
+  THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT
+        (C) Alexander Blade 2011
+      http://Alexander.SannyBuilder.com
 */
 
-#pragma once
+/*
+  Changes were made to this file:
+    - removed #pragma preprocessor directive
+*/
+
+#ifndef _SKYSCRIPT_H_
+#define _SKYSCRIPT_H_
 
 #include "types.h"
 #include "invoke.h"
@@ -2786,11 +2792,11 @@ namespace Ingredient
     static void LearnEffect(IngredientItem * self, uint aiIndex) {
         NativeInvoke::Invoke<ScriptNone>("Ingredient", "LearnEffect", self, aiIndex);
     }
-    
+
     static uint LearnNextEffect(IngredientItem * self) {
         return NativeInvoke::Invoke<uint>("Ingredient", "LearnNextEffect", self);
     }
-    
+
     static void LearnAllEffects(IngredientItem * self) {
         NativeInvoke::Invoke<ScriptNone>("Ingredient", "LearnAllEffects", self);
     }
@@ -2808,4 +2814,6 @@ namespace Enchantment
     static bool IsHostile(EnchantmentItem * self) {
         return NativeInvoke::Invoke<bool>("Enchantment", "IsHostile", self);
     }
- }
+}
+
+#endif

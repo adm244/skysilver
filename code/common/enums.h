@@ -1,10 +1,16 @@
 /*
-	THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT	
-				(C) Alexander Blade 2011
-			http://Alexander.SannyBuilder.com
+  THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT
+        (C) Alexander Blade 2011
+      http://Alexander.SannyBuilder.com
 */
 
-#pragma once
+/*
+  Changes were made to this file:
+    - removed #pragma preprocessor directive
+*/
+
+#ifndef _ENUMS_H_
+#define _ENUMS_H_
 
 namespace ID_Spell
 {
@@ -67640,5 +67646,4 @@ namespace ID_BGSAction
     };
 }
 
-
-
+#endif

@@ -4,6 +4,12 @@
       http://Alexander.SannyBuilder.com
 */
 
+/*
+  Changes were made to this file:
+    - added two new functions
+    - rewritten GetKeyPressed(..) function
+*/
+
 #include "plugin.h"
 #include "skyscript.h"
 #include <windows.h>
@@ -13,13 +19,13 @@ TNativeCall NativeCall;
 TObscriptCall ObscriptCall;        
 TGetPlayerObjectHandle GetPlayerObjectHandle; // same as Game::GetPlayer()
 TGetConsoleSelectedRef GetConsoleSelectedRef; // gets the object ref selected in the console menu
-Tdyn_cast dyn_cast;              // object dynamic casting
+Tdyn_cast dyn_cast; // object dynamic casting
 TRegisterPlugin RegisterPlugin;        
 TWait Wait;                  
 TBSString_Create BSString_Create;      
 TBSString_Free BSString_Free; 
-TExecuteConsoleCommand ExecuteConsoleCommand;  // executes command just like you typed in in the console
-                         // 2nd param is parent handle which can be 0 or point to a ref
+TExecuteConsoleCommand ExecuteConsoleCommand; // executes command just like you typed in in the console
+                                              // 2nd param is parent handle which can be 0 or point to a ref
 DWORD ___stack[MAX_STACK_LEN];
 DWORD ___stackindex;
 DWORD ___result;
@@ -69,6 +75,12 @@ int IniReadInt(char *inifile, char *section, char *param, int def)
   return GetPrivateProfileIntA(section, param, def, fname.c_str());
 }
 
+bool IniReadBool(char *inifile, char *section, char *param, bool def)
+{
+  int value = IniReadInt(inifile, section, param, def ? 1 : 0);
+  return(value != 0 ? true : false);
+}
+
 //NOTE(adm244): retrieves a string value from specified section and value of ini file and stores it in buffer
 DWORD IniReadString(char *inifile, char *section, char *param, char *buffer, DWORD bufsize, char *def)
 {
@@ -87,6 +99,7 @@ DWORD IniReadSection(char *inifile, char *section, char *buffer, DWORD bufsize)
   return GetPrivateProfileSectionA(section, buffer, bufsize, fname.c_str());
 }
 
+//NOTE(adm244): rewritten function
 bool GetKeyPressed(BYTE key)
 {
   //IMPORTANT(adm244): GetKeyState returns 16-bit integer as MSDN says,

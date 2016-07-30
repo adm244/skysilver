@@ -1,10 +1,16 @@
 /*
-	THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT	
-				(C) Alexander Blade 2011
-			http://Alexander.SannyBuilder.com
+  THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT
+        (C) Alexander Blade 2011
+      http://Alexander.SannyBuilder.com
 */
 
-#pragma once
+/*
+  Changes were made to this file:
+    - removed #pragma preprocessor directive
+*/
+
+#ifndef _TYPES_H_
+#define _TYPES_H_
 
 #include <windows.h>
 
@@ -70,34 +76,34 @@ class PlayerCharacter;
 class BaseFormComponent
 {
 public:
-	BaseFormComponent();
-	~BaseFormComponent();
-	virtual void forcevmt();
+  BaseFormComponent();
+  ~BaseFormComponent();
+  virtual void forcevmt();
 };
 
 class TESForm : public BaseFormComponent // size = 0x14
 {
 public:
-	TESForm();
-	~TESForm();
-	virtual void forcevmt();
-	/* 4  */ DWORD unk_f4;
-	/* 8  */ DWORD unk_f8;
-	/* C  */ DWORD ref_id;
-	/* 10 */ DWORD unk_f16;
+  TESForm();
+  ~TESForm();
+  virtual void forcevmt();
+  /* 4  */ DWORD unk_f4;
+  /* 8  */ DWORD unk_f8;
+  /* C  */ DWORD ref_id;
+  /* 10 */ DWORD unk_f16;
 }; // 0x14
 
 class TESChildCell
 {
-	TESChildCell();
-	~TESChildCell();
-}; 
+  TESChildCell();
+  ~TESChildCell();
+};
 
-class TESObjectREFR : public TESForm 
+class TESObjectREFR : public TESForm
 {
-	TESObjectREFR();
-	~TESObjectREFR();
-}; 
+  TESObjectREFR();
+  ~TESObjectREFR();
+};
 
 class BGSListForm
 {
@@ -417,4 +423,4 @@ class PlayerCharacter
     ~PlayerCharacter();
 };
 
-
+#endif

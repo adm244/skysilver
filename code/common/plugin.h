@@ -1,10 +1,17 @@
 /*
-	THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT	
-				(C) Alexander Blade 2011
-			http://Alexander.SannyBuilder.com
+  THIS FILE IS A PART OF THE SKYRIM DRAGON SCRIPT PROJECT
+        (C) Alexander Blade 2011
+      http://Alexander.SannyBuilder.com
 */
 
-#pragma once
+/*
+  Changes were made to this file:
+    - added two new function prototypes
+    - removed #pragma preprocessor directive
+*/
+
+#ifndef _PLUGIN_H_
+#define _PLUGIN_H_
 
 #include "types.h"
 #include <string>
@@ -23,16 +30,16 @@ typedef void (_stdcall *TWait)(int time);
 typedef char * (_stdcall *TBSString_Create)(char *src);
 typedef void (_stdcall *TBSString_Free)(char *BSString);
 
-extern TNativeCall NativeCall;						 
-extern TObscriptCall ObscriptCall;				 
-extern TGetPlayerObjectHandle GetPlayerObjectHandle; 
-extern TExecuteConsoleCommand ExecuteConsoleCommand; 
-extern TGetConsoleSelectedRef GetConsoleSelectedRef; 
-extern Tdyn_cast dyn_cast;							 
-extern TRegisterPlugin RegisterPlugin;				 
-extern TWait Wait;									 
-extern TBSString_Create BSString_Create;			 
-extern TBSString_Free BSString_Free;	
+extern TNativeCall NativeCall;
+extern TObscriptCall ObscriptCall;
+extern TGetPlayerObjectHandle GetPlayerObjectHandle;
+extern TExecuteConsoleCommand ExecuteConsoleCommand;
+extern TGetConsoleSelectedRef GetConsoleSelectedRef;
+extern Tdyn_cast dyn_cast;
+extern TRegisterPlugin RegisterPlugin;
+extern TWait Wait;
+extern TBSString_Create BSString_Create;
+extern TBSString_Free BSString_Free;
 extern DWORD ___stack[MAX_STACK_LEN];
 extern DWORD ___stackindex;
 extern DWORD ___result;
@@ -45,5 +52,8 @@ void PrintDebug(char *pattern, ...);
 int IniReadInt(char *inifile, char *section, char *param, int def);
 
 //NOTE(adm244): custom helper functions
+bool IniReadBool(char *inifile, char *section, char *param, bool def);
 DWORD IniReadString(char *inifile, char *section, char *param, char *buffer, DWORD bufsize, char *def);
 DWORD IniReadSection(char *inifile, char *section, char *buffer, DWORD bufsize);
+
+#endif

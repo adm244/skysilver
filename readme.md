@@ -5,6 +5,8 @@
 ### New: ###
 
 - Now key presses registering properly
+- Init, info, error and status messages can be disabled
+- Incresed maximum bat files count
 
 ### Description: ###
 
@@ -13,7 +15,7 @@ It's useful for people who streams the game and wants to have an ability to make
 
 ### Features: ###
 
-- Up to 20 skyrim bat files (commands) can be binded
+- Up to 50 skyrim bat files (commands) can be binded
 - Ability to disable\enable commands (not individually)
 - Custom key bindings
 - Determines position in load order among other ESPs and offsets any IDs it uses based on that
