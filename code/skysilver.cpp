@@ -79,6 +79,7 @@ For more information, please refer to <http://unlicense.org/>
 #define MAX_FILENAME 128
 #define MAX_BATCHES 50
 #define MAX_STRING 255
+#define MAX_PATH 1024
 
 enum MsgType{
   MSG_INIT,
@@ -129,25 +130,29 @@ internal uint ID_DLC02_SPIDER_FIRECLOAKING = 0x02017077;
 //NOTE(adm244): displays a message in game if its type is enabled
 // 'type' is a type of message
 // 'pattern' is a formated message (printf style)
+//
+// returns true if message was displayed
+// returns false if message wasn't displayed
 bool ShowMessage(MsgType type, char *pattern, ...)
 {
-  char text[1024];
+  bool result = true;
+  char text[MAX_STRING];
   
   if( (!show_initmessages && type == MSG_INIT) ||
       (!show_infomessages && type == MSG_INFO) ||
       (!show_errormessages && type == MSG_ERROR) ||
       (!show_commandstatus && type == MSG_CMDSTATUS) ){
-    return(false);
+    result = false;
+  } else{
+    va_list lst;
+    va_start(lst, pattern);
+    vsprintf_s(text, pattern, lst);
+    va_end(lst);
+    
+    Debug::Notification(text);
   }
   
-  va_list lst;
-  va_start(lst, pattern);
-  vsprintf_s(text, pattern, lst);
-  va_end(lst);
-  
-  Debug::Notification(text);
-  
-  return(true);
+  return(result);
 }
 
 //NOTE(adm244): reads plugins.txt file to determine a load order of plugins used
@@ -157,7 +162,7 @@ bool CheckLoadOrder()
 {
   bool result_plugin = false;
   bool result_dlc02 = false;
-  char path[MAX_STRING];
+  char path[MAX_PATH];
   FILE *fplugins;
   
   if( SHGetFolderPathA(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, path) == S_OK ){
@@ -224,6 +229,9 @@ bool CheckLoadOrder()
 //NOTE(adm244): loads a list of batch files and keys that activate them
 // filename and associated keycode stored in a BatchData structure pointed to by 'batches'
 // number of loaded batch files stored in an integer pointed to by 'num'
+//
+// returns true if at least 1 bat file loaded successefully
+// returns false if no bat files were loaded
 bool InitBatchFiles(BatchData *batches, int *num)
 {
   char buf[MAX_SECTION];
@@ -281,12 +289,14 @@ bool IsActivated(CustomCommand *cmd)
 }
 
 //NOTE(adm244): initializes plugin variables
-// return true if either batch files or plugins were successefully loaded
-// return false if all batch files and plugins failed to load
+// returns true if either batch files or plugins were successefully loaded
+// returns false if all batch files and plugins failed to load
 bool init()
 {
-  show_initmessages = IniReadBool(CONFIGFILE, "settings", "bShowInitMessages", 1);
-  show_infomessages = IniReadBool(CONFIGFILE, "settings", "bShowInfoMessages", 1);
+  bool result = true;
+  
+  show_initmessages  = IniReadBool(CONFIGFILE, "settings", "bShowInitMessages", 0);
+  show_infomessages  = IniReadBool(CONFIGFILE, "settings", "bShowInfoMessages", 1);
   show_errormessages = IniReadBool(CONFIGFILE, "settings", "bShowErrorMessages", 1);
   show_commandstatus = IniReadBool(CONFIGFILE, "settings", "bShowCommandStatus", 1);
   
@@ -294,13 +304,13 @@ bool init()
   plugins_loaded = CheckLoadOrder();
   batches_loaded = InitBatchFiles(batches, &batches_count);
   
-  CommandToggle.key = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", 0x24);
+  CommandToggle.key = IniReadInt(CONFIGFILE, "keys", "iKeyToggle", VK_HOME);
   CommandToggle.enabled = true;
   
-  CommandSkyeclipse.key = IniReadInt(CONFIGFILE, "keys", "iKeySkyeclipse", 0x2D);
+  CommandSkyeclipse.key = IniReadInt(CONFIGFILE, "keys", "iKeySkyeclipse", 0);
   CommandSkyeclipse.enabled = true;
   
-  CommandSkygeddon.key = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0x21);
+  CommandSkygeddon.key = IniReadInt(CONFIGFILE, "keys", "iKeySkygeddon", 0);
   CommandSkygeddon.enabled = true;
   
   ShowMessage(MSG_INFO, "[INFO] %s script launched", SCRIPTNAME);
@@ -313,10 +323,10 @@ bool init()
   
   if( !batches_loaded && !plugins_loaded ){
     ShowMessage(MSG_ERROR, "[FATAL] Couldn't load batches and plugins. Shutting down...");
-    return(false);
+    result = false;
   }
   
-  return(true);
+  return(result);
 }
 
 //NOTE(adm244): plugin main loop entry point
@@ -375,71 +385,73 @@ extern "C" void main_loop()
             ShowMessage(MSG_ERROR, "[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
           }
         }
-      }
-      
-      if( IsActivated(&CommandSkygeddon) ){
-        CActor *player = Game::GetPlayer();
-        TESObjectCELL *curCell = ObjectReference::GetParentCell((TESObjectREFR *)player);
         
-        if( Cell::IsInterior(curCell) ){
-          // INTERIOR
-          TESForm *SpiderFrostCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FROSTCLOAKING), "TESForm", "TESForm");
-          TESForm *SpiderFireCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FIRECLOAKING), "TESForm", "TESForm");
+        if( IsActivated(&CommandSkygeddon) ){
+          CActor *PlayerActor = Game::GetPlayer();
+          TESObjectCELL *CurCell = ObjectReference::GetParentCell((TESObjectREFR *)PlayerActor);
           
-          SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
-          
-          if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
-            CActor *RandomActor;
+          if( Cell::IsInterior(CurCell) ){
+            // INTERIOR
+            TESForm *SpiderFrostCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FROSTCLOAKING), "TESForm", "TESForm");
+            TESForm *SpiderFireCloakingForm = (TESForm *)dyn_cast(Game::GetFormById(ID_DLC02_SPIDER_FIRECLOAKING), "TESForm", "TESForm");
             
-            float x = ObjectReference::GetPositionX((TESObjectREFR *)player);
-            float y = ObjectReference::GetPositionY((TESObjectREFR *)player);
-            float z = ObjectReference::GetPositionZ((TESObjectREFR *)player);
+            SpellItem *SpellBecomeEthereal3 = (SpellItem *)Game::GetFormById(ID_SpellItem::VoiceBecomeEthereal3);
             
-            RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
-            
-            //FIX(adm244): get rid of setimagespace, use plugin instead
-            ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
-            
-            //NOTE(adm244): if RandomActor was found then it's an object reference already
-            // otherwise it will be player, safe to cast
-            ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFrostCloakingForm, 5, 0, 0);
-            ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFireCloakingForm, 5, 0, 0);
-            
-            if( SpellBecomeEthereal3 ){
-              Spell::Cast(SpellBecomeEthereal3, (TESObjectREFR *)player, NULL);
+            if( SpiderFrostCloakingForm && SpiderFireCloakingForm ){
+              CActor *RandomActor;
+              
+              float x = ObjectReference::GetPositionX((TESObjectREFR *)PlayerActor);
+              float y = ObjectReference::GetPositionY((TESObjectREFR *)PlayerActor);
+              float z = ObjectReference::GetPositionZ((TESObjectREFR *)PlayerActor);
+              
+              RandomActor = Game::FindRandomActor(x, y, z, 3000.0);
+              
+              //FIX(adm244): get rid of setimagespace, use plugin instead
+              ExecuteConsoleCommand("setimagespace 0C10B0", NULL);
+              
+              //NOTE(adm244): if RandomActor was found then it's an object reference already
+              // otherwise it will be player, safe to cast
+              ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFrostCloakingForm, 5, 0, 0);
+              ObjectReference::PlaceAtMe((TESObjectREFR *)RandomActor, SpiderFireCloakingForm, 5, 0, 0);
+              
+              if( SpellBecomeEthereal3 ){
+                Spell::Cast(SpellBecomeEthereal3, (TESObjectREFR *)PlayerActor, NULL);
+              }
+              
+              Game::RequestAutosave();
+              
+              ShowMessage(MSG_CMDSTATUS, "[STATUS] !skygeddon(dungeon) was successeful");
+            } else{
+              ShowMessage(MSG_ERROR, "[ERROR] Couldn't find \"%s\", check your load order", DLC02NAME);
             }
-            
-            Game::RequestAutosave();
-            
-            ShowMessage(MSG_CMDSTATUS, "[STATUS] !skygeddon(dungeon) was successeful");
           } else{
-            ShowMessage(MSG_ERROR, "[ERROR] Couldn't find \"%s\", check your load order", DLC02NAME);
-          }
-        } else{
-          // EXTERIOR
-          TESWeather *weather = (TESWeather *)Game::GetFormById(ID_PLUGIN_WEATHER_SKYGEDDON);
-          SpellItem *spell30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
-          SpellItem *spell90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
-          
-          if( weather && spell30sec && spell90sec ){
-            TESForm *dragonForm = Game::GetFormById(ID_TESLevCharacter::MQ104LCharDragon);
-            TESObjectREFR *dragon01Ref = ObjectReference::PlaceAtMe((TESObjectREFR *)player, dragonForm, 1, 0, 0);
+            // EXTERIOR
+            TESForm *WeatherSkygeddonForm = Game::GetFormById(ID_PLUGIN_WEATHER_SKYGEDDON);
+            TESWeather *WeatherSkygeddon = (TESWeather *)dyn_cast(WeatherSkygeddonForm, "TESForm", "TESWeather");
             
-            Actor::ResetHealthAndLimbs(player);
-            ObjectReference::MoveTo(dragon01Ref, (TESObjectREFR *)player, 0, 0, 1500, false);
+            SpellItem *StormCall30sec = (SpellItem *)Game::GetFormById(ID_Spell::DragonVoiceStormCall);
+            SpellItem *StormCall90sec = (SpellItem *)Game::GetFormById(ID_Spell::dunCGDragonVoiceStormCall);
             
-            //NOTE(adm244): dragon01Ref can be safely casted to CActor since it exists
-            Actor::StartCombat((CActor *)dragon01Ref, player);
-            
-            Spell::Cast(spell30sec, dragon01Ref, (TESObjectREFR *)player);
-            Spell::Cast(spell90sec, dragon01Ref, NULL);
-            
-            Weather::ForceActive(weather, 1);
-            Game::RequestAutosave();
-            
-            ShowMessage(MSG_CMDSTATUS, "[STATUS] !skygeddon was successeful");
-          } else{
-            ShowMessage(MSG_ERROR, "[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
+            if( WeatherSkygeddon ){
+              TESForm *DragonForm = Game::GetFormById(ID_TESLevCharacter::MQ104LCharDragon);
+              TESObjectREFR *DragonRef = ObjectReference::PlaceAtMe((TESObjectREFR *)PlayerActor, DragonForm, 1, 0, 0);
+              
+              ObjectReference::MoveTo(DragonRef, (TESObjectREFR *)PlayerActor, 0, 0, 1500, false);
+              
+              //NOTE(adm244): DragonRef can be safely casted to CActor since it exists
+              Actor::StartCombat((CActor *)DragonRef, PlayerActor);
+              Actor::ResetHealthAndLimbs(PlayerActor);
+              
+              Spell::Cast(StormCall30sec, DragonRef, (TESObjectREFR *)PlayerActor);
+              Spell::Cast(StormCall90sec, DragonRef, NULL);
+              
+              Weather::ForceActive(WeatherSkygeddon, 1);
+              Game::RequestAutosave();
+              
+              ShowMessage(MSG_CMDSTATUS, "[STATUS] !skygeddon was successeful");
+            } else{
+              ShowMessage(MSG_ERROR, "[ERROR] Couldn't find \"%s\", check your load order", PLUGINNAME);
+            }
           }
         }
       }
