@@ -36,7 +36,7 @@ From `bin` folder copy into the **root** folder of Skyrim (where TESV.exe is) ne
 
 **Installing SkySilver**
 
-Download binary files from "[Download](https://bitbucket.org/adm244/skysilver/downloads)" section. Inside a zip archive you will find 3 files:
+Download binary files from "[Releases](https://github.com/adm244/skysilver/releases)" section. Inside a zip archive you will find 3 files:
 
 - **SkySilver.esp** - an ESP plugin for Skyrim
 - **skysilver.asi** - a library plugin for ScriptDragon
